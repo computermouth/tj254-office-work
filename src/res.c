@@ -23,13 +23,13 @@ void res_init(){
     texture_map[1][0] = grn_tile_tex;
     texture_map[1][1] = red_tile_tex;
     texture_map[1][2] = grn_tile_tex;
-    texture_map[1][3] = (Texture){0};
+    texture_map[1][3] = red_tile_tex;
     texture_map[1][4] = red_tile_tex;
     texture_map[1][5] = grn_tile_tex;
     texture_map[2][0] = red_tile_tex;
     texture_map[2][1] = (Texture){0};
     texture_map[2][2] = (Texture){0};
-    texture_map[2][3] = red_tile_tex;
+    texture_map[2][3] = (Texture){0};
     texture_map[2][4] = grn_tile_tex;
     texture_map[2][5] = red_tile_tex;
 

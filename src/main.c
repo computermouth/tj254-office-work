@@ -104,24 +104,23 @@ int main(void)
 typedef enum {
     GS_TITLE,
     GS_EXPLAIN,
-    GS_WELCOME1,
-    GS_DAY1,
-    GS_WELCOME2,
-    GS_DAY2,
-    GS_WELCOME3,
-    GS_DAY3,
-    GS_WELCOME4,
-    GS_DAY4,
-    GS_WELCOME5,
-    GS_DAY5,
+    GS_WELCOME,
+    GS_DAY,
     GS_WIN,
     GS_LOSE,
 } game_state_t;
+
+typedef enum {
+    FAIL_BORED,
+    FAIL_FIRED,
+} fail_t;
 
 typedef struct {
     game_state_t state;
     float state_time;
     int level;
+    fail_t failure_mode;
+    int boredom[5];
     bool levels[5][3][6];
 } game_t;
 
@@ -133,31 +132,33 @@ void reset_game(){
         .state = GS_TITLE,
         .state_time = 0,
         .level = 0,
+        .failure_mode = FAIL_BORED,
+        .boredom = {5, 6, 7, 8, 9},
         .levels = {
             {
-                {1, 0, 0, 0, 0},
-                {0, 0, 1, 2, 1},
-                {1, 2, 2, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 1, 1, 1, 0},
+                {1, 2, 2, 2, 0, 0},
             },
             {
-                {1, 0, 0, 0, 0},
-                {0, 0, 1, 2, 1},
-                {1, 2, 2, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 1, 1, 1, 0},
+                {1, 2, 2, 2, 0, 0},
             },
             {
-                {1, 0, 0, 0, 0},
-                {0, 0, 1, 2, 1},
-                {1, 2, 2, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 1, 1, 1, 0},
+                {1, 2, 2, 2, 0, 0},
             },
             {
-                {1, 0, 0, 0, 0},
-                {0, 0, 1, 2, 1},
-                {1, 2, 2, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 1, 1, 1, 0},
+                {1, 2, 2, 2, 0, 0},
             },
             {
-                {1, 0, 0, 0, 0},
-                {0, 0, 1, 2, 1},
-                {1, 2, 2, 0, 0},
+                {1, 0, 0, 0, 0, 0},
+                {0, 0, 1, 1, 1, 0},
+                {1, 2, 2, 2, 0, 0},
             },
         },
     };
@@ -184,7 +185,8 @@ void update_gs_title(){
 
         GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
         if(GuiButton((Rectangle){screenWidth / 2. - 128, screenHeight / 4. * 3 - 48, 256, 96}, "GO TO WORK")){
-            game.state = GS_WELCOME1;
+            reset_game();
+            game.state = GS_WELCOME;
             game.level = 1;
             game.state_time = GetTime();
         }
@@ -230,11 +232,81 @@ void update_gs_welcome(){
     EndTextureMode();
 
     if (GetTime() >= game.state_time + 2){
-        game.state++;
+        game.state = GS_DAY;
+        game.state_time = GetTime();
     }
     
     BeginDrawing();
         DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+    EndDrawing();
+
+}
+
+void update_gs_day(){
+
+    BeginTextureMode(target);
+        ClearBackground(BLACK);
+
+        DrawTexture(desk_tex, 0, 0, WHITE);
+
+        for(int x = 0; x < 6; x++){
+            for(int y = 0; y < 3; y++){
+                if(game.levels[game.level - 1][y][x] == 1){
+                    DrawTexture(texture_map[y][x], x * 32, (y + 1) * 32 , WHITE);
+                }
+            }
+        }
+    EndTextureMode();
+
+    float clock = (16 - (GetTime() - game.state_time)) / 2;
+    if (clock <= 0){
+        game.state = GS_LOSE;
+        game.failure_mode = FAIL_FIRED;
+        game.state_time = GetTime();
+    }
+
+    float clock_formatted = (int)clock;
+    clock_formatted += fmodf(clock, 1) * .6;
+    char time[10] = { 0 };
+    sprintf(time, "%.2f", clock_formatted);
+    time[1] = ':';
+    
+    // Render to screen (main framebuffer)
+    BeginDrawing();
+        DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+        DrawText(time, 32 * 3 + 20, 22, 30, RED);
+    EndDrawing();
+}
+
+void update_gs_lose(){
+
+    char * title = "FAILURE";
+    int size = 20;
+
+    char * bored = "GOT TOO BORED";
+    char * fired = "YOU GOT FIRED";
+    char * reason = bored;
+    if(game.failure_mode == FAIL_FIRED)
+        reason = fired;
+
+    BeginTextureMode(target);
+        ClearBackground(BLACK);
+        DrawTextPro(GetFontDefault(), title, (Vector2){screenWidth / 3. / 2. + 10 - MeasureText(title, size) / 2., 10 }, (Vector2){0}, 15, size, 1, RED);
+        DrawText(reason, screenWidth / 3 / 2 - MeasureText(reason, size / 2) / 2, screenHeight / 3 / 2 - size / 2, size / 2, RAYWHITE);
+    EndTextureMode();
+    
+    // Render to screen (main framebuffer)
+    BeginDrawing();
+        DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
+        if(GuiButton((Rectangle){screenWidth / 2. - 64, screenHeight / 4. * 3 - 48, 128, 96}, "MENU")){
+            reset_game();
+            game.state = GS_TITLE;
+            game.level = 1;
+            game.state_time = GetTime();
+        }
+
     EndDrawing();
 
 }
@@ -253,8 +325,14 @@ void UpdateDrawFrame(void)
         case GS_TITLE:
             update_gs_title();
             break;
-        case GS_WELCOME1:
+        case GS_WELCOME:
             update_gs_welcome();
+            break;
+        case GS_DAY:
+            update_gs_day();
+            break;
+        case GS_LOSE:
+            update_gs_lose();
             break;
         // case GS_EXPLAIN:
         //     update_gs_title();
