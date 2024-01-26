@@ -13,6 +13,10 @@
 
 #include "raylib.h"
 #include "raymath.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui.h"
+
+#include "res.h"
 
 #if defined(PLATFORM_WEB)
     #define CUSTOM_MODAL_DIALOGS            // Force custom modal dialogs usage
@@ -38,8 +42,8 @@
 //----------------------------------------------------------------------------------
 // Global Variables Definition
 //----------------------------------------------------------------------------------
-static const int screenWidth = 1280;
-static const int screenHeight = 720;
+static const int screenWidth = 576;
+static const int screenHeight = 384;
 
 static RenderTexture2D target = { 0 };  // Render texture to render our game
 
@@ -55,13 +59,13 @@ Material cube_mat = { 0 };
 //------------------------------------------------------------------------------------
 int main(void)
 {
-#if !defined(_DEBUG)
     SetTraceLogLevel(LOG_NONE);         // Disable raylib trace log messsages
-#endif
 
     // Initialization
     //--------------------------------------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "crayjam");
+
+    res_init();
     
     Texture cube_tex = LoadTexture("res/grass_tile.png");
     cube_mat = LoadMaterialDefault();
@@ -69,8 +73,8 @@ int main(void)
     
     // Render texture to draw full screen, enables screen scaling
     // NOTE: If screen is scaled, mouse input should be scaled proportionally
-    target = LoadRenderTexture(screenWidth, screenHeight);
-    SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+    target = LoadRenderTexture(screenWidth / 3, screenHeight / 3);
+    // SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
 
 #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, 60, 1);
@@ -97,6 +101,144 @@ int main(void)
     return 0;
 }
 
+typedef enum {
+    GS_TITLE,
+    GS_EXPLAIN,
+    GS_WELCOME1,
+    GS_DAY1,
+    GS_WELCOME2,
+    GS_DAY2,
+    GS_WELCOME3,
+    GS_DAY3,
+    GS_WELCOME4,
+    GS_DAY4,
+    GS_WELCOME5,
+    GS_DAY5,
+    GS_WIN,
+    GS_LOSE,
+} game_state_t;
+
+typedef struct {
+    game_state_t state;
+    float state_time;
+    int level;
+    bool levels[5][3][6];
+} game_t;
+
+game_t game = { 0 };
+
+void reset_game(){
+
+    game_t g = {
+        .state = GS_TITLE,
+        .state_time = 0,
+        .level = 0,
+        .levels = {
+            {
+                {1, 0, 0, 0, 0},
+                {0, 0, 1, 2, 1},
+                {1, 2, 2, 0, 0},
+            },
+            {
+                {1, 0, 0, 0, 0},
+                {0, 0, 1, 2, 1},
+                {1, 2, 2, 0, 0},
+            },
+            {
+                {1, 0, 0, 0, 0},
+                {0, 0, 1, 2, 1},
+                {1, 2, 2, 0, 0},
+            },
+            {
+                {1, 0, 0, 0, 0},
+                {0, 0, 1, 2, 1},
+                {1, 2, 2, 0, 0},
+            },
+            {
+                {1, 0, 0, 0, 0},
+                {0, 0, 1, 2, 1},
+                {1, 2, 2, 0, 0},
+            },
+        },
+    };
+
+    game = g;
+
+}
+
+void update_gs_title(){
+
+    char * title = "OFFICE WORK";
+    int size = 20;
+
+    BeginTextureMode(target);
+        ClearBackground(BLACK);
+
+        DrawText(title, screenWidth / 3 / 2 - MeasureText(title, size) / 2, screenHeight / 3 / 4 - size / 2, size, RAYWHITE);
+        
+    EndTextureMode();
+    
+    // Render to screen (main framebuffer)
+    BeginDrawing();
+        DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 30);
+        if(GuiButton((Rectangle){screenWidth / 2. - 128, screenHeight / 4. * 3 - 48, 256, 96}, "GO TO WORK")){
+            game.state = GS_WELCOME1;
+            game.level = 1;
+            game.state_time = GetTime();
+        }
+
+    EndDrawing();
+
+}
+
+void update_gs_welcome(){
+
+    char * mon = "MONDAY";
+    char * tue = "TUESDAY";
+    char * wed = "WEDNESDAY";
+    char * thr = "THURSDAY";
+    char * fri = "FRIDAY";
+
+    char * curr = NULL;
+    switch (game.level){
+        case 1:
+            curr = mon;
+            break;
+        case 2:
+            curr = tue;
+            break;
+        case 3:
+            curr = wed;
+            break;
+        case 4:
+            curr = thr;
+            break;
+        case 5:
+            curr = fri;
+            break;
+        default:
+            break;
+    }
+
+    int size = 20;
+
+    BeginTextureMode(target);
+        ClearBackground(BLACK);
+        DrawText(curr, screenWidth / 3 / 2 - MeasureText(curr, size) / 2, screenHeight / 3 / 4 - size / 2, size, RAYWHITE);
+    EndTextureMode();
+
+    if (GetTime() >= game.state_time + 2){
+        game.state++;
+    }
+    
+    BeginDrawing();
+        DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)screenWidth, (float)screenHeight }, (Vector2){ 0, 0 }, 0.0f, WHITE);
+    EndDrawing();
+
+}
+
 //--------------------------------------------------------------------------------------------
 // Module functions definition
 //--------------------------------------------------------------------------------------------
@@ -107,41 +249,18 @@ void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
     // TODO: Update variables / Implement example logic at this point
     //----------------------------------------------------------------------------------
+    switch(game.state){
+        case GS_TITLE:
+            update_gs_title();
+            break;
+        case GS_WELCOME1:
+            update_gs_welcome();
+            break;
+        // case GS_EXPLAIN:
+        //     update_gs_title();
+        //     break;
+        default:
+            break;
+    }
 
-    // Draw
-    //----------------------------------------------------------------------------------
-    // Render game screen to a texture, 
-    // it could be useful for scaling or further sahder postprocessing
-    BeginTextureMode(target);
-        ClearBackground(RAYWHITE);
-        
-        // TODO: Draw your game screen here
-        DrawRectangle(10, 10, screenWidth - 20, screenHeight - 20, SKYBLUE);
-
-        Camera3D camera = { 0 };
-        camera.fovy = 45;
-        camera.position = (Vector3){5, 5, 5};
-        camera.projection = CAMERA_PERSPECTIVE;
-        camera.up = (Vector3){0,1,0};
-        // camera.target = (Vector3){10, 0, 0};
-        
-        BeginMode3D(camera);
-            DrawMesh(GenMeshCube(1, 1, 1), cube_mat, MatrixIdentity());
-            // DrawCube((Vector3){0}, 1, 1, 1, RED);
-            DrawGrid(10, 1);
-        EndMode3D();
-        
-    EndTextureMode();
-    
-    // Render to screen (main framebuffer)
-    BeginDrawing();
-        ClearBackground(RAYWHITE);
-        
-        // Draw render texture to screen, scaled if required
-        DrawTexturePro(target.texture, (Rectangle){ 0, 0, (float)target.texture.width, -(float)target.texture.height }, (Rectangle){ 0, 0, (float)target.texture.width, (float)target.texture.height }, (Vector2){ 0, 0 }, 0.0f, WHITE);
-
-        // TODO: Draw everything that requires to be drawn at this point, maybe UI?
-
-    EndDrawing();
-    //----------------------------------------------------------------------------------  
 }

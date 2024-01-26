@@ -1,7 +1,11 @@
 
+CFLAGS ?=
 IFLAGS ?=
 LFLAGS ?=
 EFLAGS ?=
+
+CFLAGS += -Wall -Wextra -pedantic
+IFLAGS += -I./src
 
 PLATFORM ?= PLATFORM_DESKTOP
 
@@ -33,6 +37,7 @@ else ifeq ($(PLATFORM),PLATFORM_DESKTOP)
 		UNAMEOS = $(shell uname)
 		ifeq ($(UNAMEOS),Linux)
 			PLATFORM_OS = LINUX
+			CFLAGS += -g -fsanitize=address
 			LFLAGS += -lGL -lrt -ldl -lm -lX11 -lpthread
 		endif
 		ifeq ($(UNAMEOS),Darwin)
@@ -51,7 +56,7 @@ BUILD_DEP = $(wildcard src/*) Makefile $(wildcard res/*)
 C_SRC = $(wildcard src/*.c)
 
 out/$(BIN): $(RAYLIB_SRC)/$(RAYLIB_PLT) $(BUILD_DEP)
-	$(CC) -o out/$(BIN) $(C_SRC) $(IFLAGS) $(LFLAGS) $(EFLAGS)
+	$(CC) -o out/$(BIN) $(C_SRC) $(CFLAGS) $(IFLAGS) $(LFLAGS) $(EFLAGS)
 
 $(RAYLIB_SRC)/$(RAYLIB_PLT):
 	$(MAKE) -C $(RAYLIB_SRC) clean
