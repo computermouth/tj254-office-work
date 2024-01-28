@@ -59,13 +59,16 @@ Material cube_mat = { 0 };
 //------------------------------------------------------------------------------------
 int main(void)
 {
-    SetTraceLogLevel(LOG_NONE);         // Disable raylib trace log messsages
+    SetTraceLogLevel(LOG_ALL);         // Disable raylib trace log messsages
 
     // Initialization
     //--------------------------------------------------------------------------------------
     InitWindow(screenWidth, screenHeight, "crayjam");
+    InitAudioDevice();
+    SetMasterVolume(.7);
 
     res_init();
+    PlaySound(good_snd);
     
     Texture cube_tex = LoadTexture("res/grass_tile.png");
     cube_mat = LoadMaterialDefault();
@@ -89,9 +92,12 @@ int main(void)
     }
 #endif
 
+    UnloadMusicStream(music);
     // De-Initialization
     //--------------------------------------------------------------------------------------
     UnloadRenderTexture(target);
+
+    CloseAudioDevice();
     
     // TODO: Unload all loaded resources at this point
 
@@ -130,9 +136,9 @@ typedef struct {
 game_t game = { 0 };
 
 int point_map[3][6] = {
-    {-4, 2,-2, 1, 2,-3},
-    { 6,-2, 1,-3,-2, 1},
-    {-4, 0, 0, 0, 3,-7},
+    { 0,-2, 2,-2, 0, 1},
+    { 6, 3,-4,-3,-2, 3},
+    { 4, 0, 0, 0, 2,-7},
 };
 
 void reset_game(){
@@ -148,17 +154,17 @@ void reset_game(){
         .boredom = {2, 4, 6, 8, 9},
         .levels = {
             {
-                {0, 0, 1, 0, 1, 0},
+                {0, 1, 1, 0, 0, 0},
                 {0, 0, 1, 1, 0, 1},
                 {1, 2, 2, 2, 1, 0},
             },
             {
-                {1, 1, 0, 0, 1, 0},
-                {1, 0, 1, 1, 1, 0},
+                {0, 1, 1, 0, 0, 0},
+                {1, 0, 1, 1, 1, 1},
                 {1, 2, 2, 2, 0, 0},
             },
             {
-                {0, 1, 0, 1, 0, 1},
+                {0, 0, 0, 1, 0, 1},
                 {1, 1, 1, 0, 1, 0},
                 {0, 2, 2, 2, 1, 1},
             },
@@ -168,7 +174,7 @@ void reset_game(){
                 {0, 2, 2, 2, 1, 1},
             },
             {
-                {0, 0, 0, 0, 1, 1},
+                {0, 1, 0, 0, 0, 1},
                 {1, 0, 0, 0, 1, 1},
                 {0, 2, 2, 2, 1, 1},
             },
@@ -201,6 +207,7 @@ void update_gs_title(){
             game.state = GS_WELCOME;
             game.level = 1;
             game.state_time = GetTime();
+            PlayMusicStream(music);
         }
 
     EndDrawing();
@@ -286,6 +293,8 @@ void update_gs_day(){
                     if(point_map[y][x] < 0)
                         work_left = true;
 
+                    DrawTexture(texture_map[y][x], x * 32, (y + 1) * 32 , WHITE);
+
                     if(CheckCollisionPointPoly(mp, 
                         (Vector2[4]){
                             {x * 32      , (y + 1) * 32 }, // top left
@@ -294,19 +303,35 @@ void update_gs_day(){
                             {(x + 1) * 32, (y + 1) * 32 }, // top right
                         }, 4))
                     {
-                        DrawRectangle(x * 32, (y+1) * 32, 32, 32, WHITE);
+
+                        Color hc = RED;
+
+                        if(point_map[y][x] > 0)
+                            hc = GREEN;
+
+                        char pts[2] = "2";
+
+                        pts[0] = '0' + abs(point_map[y][x]);
+                        DrawText(pts, x * 32 + 10, (y + 1) * 32 + 10, 10, hc);
 
                         if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
                             // maybe time or something
                             game.levels[game.level - 1][y][x] = 0;
                             game.boredom[game.level - 1] -= point_map[y][x];
                             game.boredom[game.level - 1] = Clamp(game.boredom[game.level - 1], 0, 10);
-                            if(game.boredom[game.level - 1] >= 10)
+                            if(game.boredom[game.level - 1] >= 10){
                                 game.state = GS_LOSE;
+                                SeekMusicStream(music, 0);
+                                StopMusicStream(music);
+                            }
+
+                            Sound *ps = &good_snd;
+                            if(point_map[y][x] < 0)
+                                ps = &bad__snd;
+
+                            PlaySound(*ps);
                         }
                     }
-
-                    DrawTexture(texture_map[y][x], x * 32, (y + 1) * 32 , WHITE);
                     // if mouse hovers,
                     // tint or texture_map_2
                     // maybe osscilate on game time
@@ -342,11 +367,7 @@ void update_gs_day(){
 
     // work done, next level
     if(!work_left){
-        game.level++;
         game.state = GS_WELCOME;
-        if (game.level == 6){
-            game.state = GS_WIN;
-        }
         game.last_time_score = game.level * (16. - (GetTime() - game.state_time)) / 2.;
         game.last_bonus_score = 0;
         // bonus points for unused distractions
@@ -355,6 +376,12 @@ void update_gs_day(){
                 if(game.levels[game.level - 1][y][x] == 1 && point_map[y][x] > 0)
                     game.last_bonus_score += point_map[y][x] * game.level;
             }
+        }
+        game.level++;
+        if (game.level == 6){
+            game.state = GS_WIN;
+            SeekMusicStream(music, 0);
+            StopMusicStream(music);
         }
         game.score += game.last_time_score + game.last_bonus_score;
         game.state_time = GetTime();
@@ -447,6 +474,7 @@ void UpdateDrawFrame(void)
     //----------------------------------------------------------------------------------
     // TODO: Update variables / Implement example logic at this point
     //----------------------------------------------------------------------------------
+
     switch(game.state){
         case GS_TITLE:
             update_gs_title();
@@ -456,9 +484,11 @@ void UpdateDrawFrame(void)
         //     break;
         case GS_WELCOME:
             update_gs_welcome();
+            UpdateMusicStream(music);
             break;
         case GS_DAY:
             update_gs_day();
+            UpdateMusicStream(music);
             break;
         case GS_LOSE:
             update_gs_lose();
