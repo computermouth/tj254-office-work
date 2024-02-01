@@ -136,9 +136,9 @@ typedef struct {
 game_t game = { 0 };
 
 int point_map[3][6] = {
-    { 0,-2, 2,-2, 0, 1},
-    { 6, 3,-4,-3,-2, 3},
-    { 4, 0, 0, 0, 2,-7},
+    { 0,-3, 4,-3, 0, 1},
+    { 6, 4,-5, 3,-3, 3},
+    {-4, 0, 0, 0, 5,-7},
 };
 
 void reset_game(){
@@ -293,7 +293,7 @@ void update_gs_day(){
                     if(point_map[y][x] < 0)
                         work_left = true;
 
-                    DrawTexture(texture_map[y][x], x * 32, (y + 1) * 32 , WHITE);
+                    DrawTexture(texture_map[y][x], x * 32, (y + 1) * 32, WHITE);
 
                     if(CheckCollisionPointPoly(mp, 
                         (Vector2[4]){
@@ -309,10 +309,14 @@ void update_gs_day(){
                         if(point_map[y][x] > 0)
                             hc = GREEN;
 
-                        char pts[2] = "2";
+                        char pts[2] = "0";
 
                         pts[0] = '0' + abs(point_map[y][x]);
-                        DrawText(pts, x * 32 + 10, (y + 1) * 32 + 10, 10, hc);
+                        int tw = MeasureText(pts, 10);
+                        Color b = BLACK;
+                        b.a = 127;
+                        DrawRectangle(x * 32 + 11, (y + 1) * 32 + 11, 10, 11, b);
+                        DrawText(pts, x * 32 + 11 + tw / 2, (y + 1) * 32 + 12, 10, hc);
 
                         if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
                             // maybe time or something
@@ -332,9 +336,6 @@ void update_gs_day(){
                             PlaySound(*ps);
                         }
                     }
-                    // if mouse hovers,
-                    // tint or texture_map_2
-                    // maybe osscilate on game time
                 }
             }
         }

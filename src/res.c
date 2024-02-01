@@ -60,10 +60,10 @@ void res_init(){
     texture_map[1][0] = spr_gameboy;
     texture_map[1][1] = spr_youtube;
     texture_map[1][2] = spr_meeting;
-    texture_map[1][3] = spr_stamp;
+    texture_map[1][3] = spr_coffee;
     texture_map[1][4] = spr_letters;
     texture_map[1][5] = spr_ball;
-    texture_map[2][0] = spr_coffee;
+    texture_map[2][0] = spr_stamp;
     texture_map[2][1] = (Texture){0};
     texture_map[2][2] = (Texture){0};
     texture_map[2][3] = (Texture){0};
